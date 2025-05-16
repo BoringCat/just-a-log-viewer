@@ -9,6 +9,7 @@
     ref="treeRef"
     :props="props"
     :load="loadNode"
+    node-key="id"
     lazy
     :highlight-current="true"
     :filter-node-method="filterMethod"
@@ -44,6 +45,7 @@ import {
   Document,
   Setting,
 } from '@element-plus/icons-vue'
+import { compileScript } from 'vue/compiler-sfc'
 
 interface TreeData {
   [key: string]: any
@@ -91,6 +93,8 @@ const loadDirfiles = async() => {
 }
 
 const query = ref('')
+const data = ref([])
+let rootNode:Node
 const treeRef = ref<TreeInstance>()
 watch(query, (val) => {
   treeRef.value!.filter(val)
@@ -103,6 +107,7 @@ const filterMethod = (value: string, data: Tree) => {
 
 const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => void) => {
   if (node.level === 0) {
+    rootNode = node
     fetch('/api/v1/futures').then(resp=>resp.json())
     .then(futures => {
       const datas:Tree[] = []
@@ -121,7 +126,7 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
       }
       resolve(datas)
     })
-  } else if (node.data.children === undefined) {
+  } else if (node.data.children === undefined || node.data.children === null) {
     switch (node.data.id) {
       case "dirfiles":
         loadDirfiles().catch(err=>{
@@ -172,57 +177,23 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
   }
 }
 
-// import { ref } from 'vue'
-
-// interface container {
-//   id:   string,
-//   name: string
-// }
-
-// interface fmap {
-//   name: string,
-//   hash: string
-// }
-
-// const futures = ref<string[]>([])
-// const menu = ref()
-// const services = ref<string[]>([])
-// const containers = ref<container[]>([])
-// const filesMap = ref<{[key:string]:fmap[]}>({})
-// // const fileKeys = ref<{[key:string]:string}>({})
 const emit = defineEmits(['select'])
 
-
-// const handleOpen = async (key: string, keyPath: string[]) => {
-//   switch (key) {
-//     case "systemd":
-//       if (services.value.length > 0) return
-//       await loadSystemd()
-//       break
-//     case "dirfiles":
-//       if (Object.keys(filesMap.value).length > 0) return
-//       await loadDirfiles()
-//       break
-//     case "docker":
-//     if (containers.value.length > 0) return
-//       await loadDocker()
-//       break
-//   }
-// }
 const handleSelect = (data: Tree, node: Node) => {
   if (node.isLeaf) emit('select', {type: data.father, id: data.id})
 }
 
-// const clean = () => {
-//   menu.value.close('systemd')
-//   menu.value.close('dirfiles')
-//   menu.value.close('docker')
-//   services.value.splice(0)
-//   filesMap.value = {}
-//   containers.value.splice(0)
-// }
+const clean = () => {
+  for (const child of rootNode.childNodes) {
+    const nodelist = [...child.childNodes]
+    nodelist.map(treeRef.value!.remove)
+    child.loaded = false
+    child.isLeaf = false
+    child.collapse()
+  }
+}
 
-// defineExpose({
-//   clean
-// })
+defineExpose({
+  clean
+})
 </script>
