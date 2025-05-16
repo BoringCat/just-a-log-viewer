@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"iter"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -84,4 +86,35 @@ func GetTailOffsetByFileName(fp string, lines int64) (int64, error) {
 	}
 	defer fd.Close()
 	return GetTailOffset(fd, lines)
+}
+
+func DoGlobWalk(confs DirFileConfigs) iter.Seq[*File] {
+	return func(yield func(*File) bool) {
+		for cidx, conf := range confs {
+			maxId := max(conf.KeyId, conf.NameId)
+			for pidx, path := range conf.Paths {
+				files, err := filepath.Glob(path)
+				if err != nil {
+					slog.Error("遍历文件列表失败", "err", err, "glob", path, "cidx", cidx, "pidx", pidx)
+					continue
+				}
+				slog.Debug("遍历文件列表", "files", files, "glob", path, "cidx", cidx, "pidx", pidx)
+				for _, file := range files {
+					subm := conf.Regex.FindStringSubmatch(file)
+					if len(subm) < maxId {
+						slog.Error("正则表达式匹配失败", "file", file, "regex", conf.Regex.String(), "cidx", cidx, "pidx", pidx)
+						continue
+					}
+					ok := yield(&File{
+						Key:  subm[conf.KeyId],
+						Name: subm[conf.NameId],
+						Path: file,
+					})
+					if !ok {
+						return
+					}
+				}
+			}
+		}
+	}
 }

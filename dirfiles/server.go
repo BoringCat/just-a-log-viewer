@@ -10,7 +10,6 @@ import (
 	"mime"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -30,12 +29,12 @@ type File struct {
 	Hash string `json:"hash"`
 	Key  string `json:"key"`
 	Name string `json:"name"`
-	path string
+	Path string `json:"-"`
 }
 
 func (f *File) getHash() string {
 	h := sha1.New()
-	fmt.Fprintf(h, "%q\x00%q\x00%q", f.Key, f.Name, f.path)
+	fmt.Fprintf(h, "%q\x00%q\x00%q", f.Key, f.Name, f.Path)
 	f.Hash = hex.EncodeToString(h.Sum(nil))
 	return f.Hash
 }
@@ -65,29 +64,8 @@ func (s *Server) doGlobWalk() {
 	}
 	s.lastFetch = time.Now()
 	var newMap sync.Map
-	for cidx, conf := range s.conf {
-		maxId := max(conf.KeyId, conf.NameId)
-		for pidx, path := range conf.Paths {
-			files, err := filepath.Glob(path)
-			if err != nil {
-				slog.Error("遍历文件列表失败", "err", err, "glob", path, "cidx", cidx, "pidx", pidx)
-				continue
-			}
-			slog.Debug("遍历文件列表", "files", files, "glob", path, "cidx", cidx, "pidx", pidx)
-			for _, file := range files {
-				subm := conf.Regex.FindStringSubmatch(file)
-				if len(subm) < maxId {
-					slog.Error("正则表达式匹配失败", "file", file, "regex", conf.Regex.String(), "cidx", cidx, "pidx", pidx)
-					continue
-				}
-				f := File{
-					Key:  subm[conf.KeyId],
-					Name: subm[conf.NameId],
-					path: file,
-				}
-				newMap.Store(f.getHash(), &f)
-			}
-		}
+	for f := range DoGlobWalk(s.conf) {
+		newMap.Store(f.getHash(), &f)
 	}
 	s.fmap = &newMap
 }
@@ -117,7 +95,7 @@ func (s *Server) getFile(h string) (string, error) {
 	if !ok {
 		return "", os.ErrNotExist
 	}
-	return val.(*File).path, nil
+	return val.(*File).Path, nil
 }
 
 func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
