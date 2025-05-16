@@ -1,12 +1,16 @@
-package main
+//go:build linux
+
+package docker
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/boringcat/just-a-log-viewer/server"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
@@ -16,15 +20,39 @@ type Container struct {
 	Name string `json:"name"`
 }
 
-func HandleDockerList(w http.ResponseWriter, r *http.Request) {
-	apiClient, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer apiClient.Close()
+type Server struct {
+	client *client.Client
+}
 
-	containers, err := apiClient.ContainerList(r.Context(), types.ContainerListOptions{})
+func NewServer() (server.LogServer, error) {
+	if Enabled {
+		return &Server{}, nil
+	}
+	return nil, nil
+}
+
+func (s *Server) getClient(ctx context.Context) (*client.Client, error) {
+	if s.client == nil {
+		apiClient, err := client.NewClientWithOpts(client.FromEnv)
+		if err != nil {
+			return nil, err
+		}
+		s.client = apiClient
+	} else {
+		if _, err := s.client.Ping(ctx); err != nil {
+			s.client.Close()
+			s.client = nil
+			if _, err = s.getClient(ctx); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return s.client, nil
+}
+
+func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
+	client, err := s.getClient(r.Context())
+	containers, err := client.ContainerList(r.Context(), types.ContainerListOptions{})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -45,20 +73,14 @@ func HandleDockerList(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "]")
 }
 
-func HandleDockerTail(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if err := EnsureKeys(q, "id"); err != nil {
+	if err := server.EnsureKeys(q, "id"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	apiClient, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer apiClient.Close()
-
+	client, err := s.getClient(r.Context())
 	opts := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -67,7 +89,7 @@ func HandleDockerTail(w http.ResponseWriter, r *http.Request) {
 		opts.Tail = q.Get("tail")
 	}
 
-	rd, err := apiClient.ContainerLogs(r.Context(), q.Get("id"), opts)
+	rd, err := client.ContainerLogs(r.Context(), q.Get("id"), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -86,9 +108,9 @@ func HandleDockerTail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func HandleDockerWatch(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if err := EnsureKeys(q, "id"); err != nil {
+	if err := server.EnsureKeys(q, "id"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -99,13 +121,7 @@ func HandleDockerWatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiClient, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer apiClient.Close()
-
+	client, err := s.getClient(r.Context())
 	opts := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -115,7 +131,7 @@ func HandleDockerWatch(w http.ResponseWriter, r *http.Request) {
 		opts.Tail = q.Get("tail")
 	}
 
-	rd, err := apiClient.ContainerLogs(r.Context(), q.Get("id"), opts)
+	rd, err := client.ContainerLogs(r.Context(), q.Get("id"), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -138,4 +154,8 @@ func HandleDockerWatch(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "\n")
 		flusher.Flush()
 	}
+}
+
+func init() {
+	server.Register("docker", NewServer)
 }

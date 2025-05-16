@@ -31,6 +31,7 @@ BUILD_CMD := go build -trimpath -ldflags "-s -w -X main.version=${VERSION} -X ma
 MAIN      := ./
 # 开启CGO
 export CGO_ENABLED := 1
+export NODE_VERSION := 20
 
 # 默认命令：根据编译当前系统当前架构的版本，不添加 系统-架构 后缀
 .PHONY: dist
@@ -38,7 +39,7 @@ dist:
 	$(BUILD_CMD) -o $(BIN_FILE) $(MAIN)
 
 # 获取支持的所有系统和架构，排除掉不想要的，作为编译目标
-DISTLIST:=$(shell go tool dist list | grep -P '^(linux)/' | grep -P 'amd64|386' | sed 's~/~.~g')
+DISTLIST:=$(shell go tool dist list | grep -P '^(darwin|linux|windows)/' | grep -P '386|64|390' | sed 's~/~.~g')
 # 从 系统.架构 列表中提取支持的系统（用于创建make入口）
 OSLIST:=$(shell for t in ${DISTLIST}; do echo $${t}; done | cut -d. -f1 | sort | uniq)
 
@@ -60,16 +61,29 @@ $(foreach os,$(OSLIST),$(eval $(call OS_template,$(os))))
 dist.%:
 	$(eval GOOS := $(word 1,$(subst ., ,$*)))
 	$(eval GOARCH := $(word 2,$(subst ., ,$*)))
-	@sh -c '[ "$(GOOS)" = "windows" ] && EXT=.exe; export GOOS=$(GOOS) GOARCH=$(GOARCH); set -x; \
+	@bash -c '[ "$(GOOS)" = "windows" ] && EXT=.exe; export GOOS=$(GOOS) GOARCH=$(GOARCH); \
+	[ "$(GOOS)" != "linux" ] || [ "$(GOARCH)" != "amd64" -a "$(GOARCH)" != "386" ] && export CGO_ENABLED=0; \
+	set -x; \
 	$(BUILD_CMD) -o $(BIN_FILE)-$(GOOS)-$(GOARCH)$${EXT} $(MAIN)'
 
-# 定义 make deps.* 为执行 go mod 的操作
+# 定义 make dep.* 为执行 go mod 的操作
 .PHONY: deps.%
-deps.%:
+dep.%:
 	go mod $(word 1,$(subst ., ,$*))
 
 # 定义 make deps 为执行依赖检查、校验、下载
-deps: deps.tidy deps.verify deps.download
+deps: dep.tidy dep.verify dep.download
+
+.PHONY: web.install
+web.install:
+	@bash -l -c 'cd web; nvm exec $(NODE_VERSION) yarn install'
+
+.PHONY: web.build
+web.build:
+	@bash -l -c 'cd web; nvm exec $(NODE_VERSION) yarn build'
+
+.PHONY: web
+web: web.install web.build
 
 # 定义 make clean 为清理目录和编译缓存
 clean:

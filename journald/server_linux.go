@@ -1,15 +1,20 @@
-package main
+//go:build linux && cgo
+
+package journald
 
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os/exec"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
+	"github.com/boringcat/just-a-log-viewer/server"
 	"github.com/coreos/go-systemd/sdjournal"
 )
 
@@ -27,28 +32,70 @@ func (a Units) Len() int           { return len(a) }
 func (a Units) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a Units) Less(i, j int) bool { return a[i].Name < a[j].Name }
 
-func HandleSystemdList(w http.ResponseWriter, r *http.Request) {
+type Server struct {
+	services  Units
+	lock      sync.RWMutex
+	lastFetch time.Time
+}
+
+func NewServer() (server.LogServer, error) {
+	if Enabled {
+		s := Server{
+			services: Units{},
+		}
+		go s.getUnits()
+		return &s, nil
+	}
+	return nil, nil
+}
+
+func (s *Server) getUnits() (Units, error) {
+	s.lock.RLock()
+	if time.Now().Sub(s.lastFetch) < 10*time.Minute {
+		slog.Debug("从缓存获取Systemd Units")
+		defer s.lock.RUnlock()
+		return s.services, nil
+	}
+	s.lock.RUnlock()
+	if !s.lock.TryLock() {
+		slog.Debug("获取写锁失败")
+		return s.services, nil
+	}
+	defer s.lock.Unlock()
 	units := Units{}
-	p := exec.Command("/usr/bin/env", "systemctl", "list-units", "--state=running,exited,failed", "-o", "json")
+	arg := []string{"systemctl", "list-units", "-o", "json"}
+	if len(SystemdUnitState) > 0 {
+		arg = append(arg, fmt.Sprintf("--state=%s", SystemdUnitState))
+	}
+	p := exec.Command("/usr/bin/env", arg...)
 	out, err := p.StdoutPipe()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 	defer out.Close()
 	if err := p.Start(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 	if err := json.NewDecoder(out).Decode(&units); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 	if err := p.Wait(); err != nil {
+		return nil, err
+	}
+	sort.Sort(units)
+	s.services = units
+	s.lastFetch = time.Now()
+	return s.services, nil
+}
+
+func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
+	units, err := s.getUnits()
+	if err != nil {
+		slog.Error("获取Systemd Units异常", "err", err)
+		server.HTTPError(w, http.StatusInternalServerError)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	sort.Sort(units)
 	w.Header().Set("Content-Type", "application/json")
 	sep := "["
 	enc := json.NewEncoder(w)
@@ -58,6 +105,8 @@ func HandleSystemdList(w http.ResponseWriter, r *http.Request) {
 		enc.Encode(unit.Name)
 		sep = ","
 	}
+	fmt.Fprint(w, sep)
+	enc.Encode("dmesg")
 	fmt.Fprint(w, "]")
 }
 
@@ -105,9 +154,9 @@ func GetHttpSystemdJournal(q url.Values) (j *sdjournal.Journal, tail uint64, unt
 	return
 }
 
-func HandleSystemdTail(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if err := EnsureKeys(q, "name"); err != nil {
+	if err := server.EnsureKeys(q, "name"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -172,9 +221,9 @@ func HandleSystemdTail(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "]")
 }
 
-func HandleSystemdWatch(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	if err := EnsureKeys(q, "name"); err != nil {
+	if err := server.EnsureKeys(q, "name"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -225,17 +274,17 @@ func HandleSystemdWatch(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
-			fmt.Println("client disconnected")
+			slog.Debug("监听停止", "reason", "客户端断开连接")
 			return
 		default:
 			if hasNew {
 				e, err := j.GetEntry()
 				if err != nil {
-                    fmt.Println("get entry error:", err)
-                    return
+					slog.Debug("监听停止", "reason", "获取Entry异常", "err", err)
+					return
 				}
 				if e.RealtimeTimestamp > until_ts {
-                    fmt.Println("after until_ts")
+					slog.Debug("监听停止", "reason", "到达时间期限")
 					return
 				}
 				fmt.Fprint(w, "data: ")
@@ -248,19 +297,19 @@ func HandleSystemdWatch(w http.ResponseWriter, r *http.Request) {
 					Message:   e.Fields[sdjournal.SD_JOURNAL_FIELD_MESSAGE],
 					Priority:  e.Fields[sdjournal.SD_JOURNAL_FIELD_PRIORITY],
 				}); err != nil {
-					fmt.Println("enc error", err)
+					slog.Debug("监听停止", "reason", "Json序列化异常", "err", err)
 					return
 				}
-                fmt.Fprint(w, "\n")
+				fmt.Fprint(w, "\n")
 				flusher.Flush()
 			}
 			if n, err := j.Next(); err != nil {
-				fmt.Println("next error", err)
+				slog.Debug("监听停止", "reason", "获取下一条Entry异常", "err", err)
 				return
 			} else if n <= 0 {
 				status := j.Wait(200 * time.Microsecond)
 				if time.Now().After(until) {
-                    fmt.Println("after until:", until)
+					slog.Debug("监听停止", "reason", "到达时间期限")
 					return
 				}
 				hasNew = status == sdjournal.SD_JOURNAL_APPEND
@@ -268,4 +317,8 @@ func HandleSystemdWatch(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+func init() {
+	server.Register("systemd", NewServer)
 }

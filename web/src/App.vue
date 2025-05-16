@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { ref, watch, type Ref } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import Menu from './components/Menu.vue'
+// import Menu from './components/Menu.vue'
+import MenuV2 from './components/MenuV2.vue'
 import { Loading, Sunny, Moon, DataAnalysis, Refresh, Document } from '@element-plus/icons-vue'
 import { useDark, useToggle } from '@vueuse/core'
 
 const isDark = useDark()
-const toggleDark = useToggle(isDark)
+// const toggleDark = useToggle(isDark)
 
 interface selected {
-  root: string
   type: string
-  name: string
+  id:   string
 }
 
 interface journalLog {
@@ -33,7 +33,7 @@ const order = ref('DESC')
 const warp = ref(false)
 const logClass = ref('log-nowarp')
 const listenEvent = ref<EventSource>()
-const logSelect:selected = {type:'',name:'',root:''}
+const logSelect:selected = {type:'',id:''}
 
 const trySetValue = (val:Ref, key:string) => {
   watch(val, v => localStorage.setItem(key,  JSON.stringify(v)))
@@ -76,33 +76,29 @@ const warpChange = (val:boolean) => {
 }
 
 const handleSelect = (val:selected) => {
-  logSelect.root = val.root
   logSelect.type = val.type
-  logSelect.name = val.name
+  logSelect.id = val.id
 }
 
-const systemdReq = ():URLSearchParams => {
-  const q = new URLSearchParams({'name': logSelect.name})
-  if (tail.value > 0) q.append('tail', String(tail.value))
-  if (until.value !== undefined) {
-    q.append('until', String(until.value.getTime()))
+const getQuery = (idname:string, ...flags:string[]):URLSearchParams => {
+  const q = new URLSearchParams()
+  q.set(idname, logSelect.id)
+  for (const f of flags) {
+    switch (f) {
+      case "tail":
+        if (tail.value > 0) q.append('tail', String(tail.value))
+      break
+      case "until":
+        if (until.value !== undefined) q.append('until', String(until.value.getTime()))
+      break
+    }
   }
-  return q
-}
-const dirfilesReq = ():URLSearchParams => {
-  const q = new URLSearchParams({'name': logSelect.name, 'root': logSelect.root})
-  if (tail.value > 0) q.append('tail', String(tail.value))
-  return q
-}
-const dockerReq = ():URLSearchParams => {
-  const q = new URLSearchParams({'id': logSelect.name})
-  if (tail.value > 0) q.append('tail', String(tail.value))
   return q
 }
 
 const onTailSystemd = async() => {
   try {
-    const resp  = await fetch(`/api/v1/systemd/logs?${systemdReq()}`)
+    const resp  = await fetch(`/api/v1/systemd/tail?${getQuery('name', 'tail', 'until')}`)
     let   datas = await resp.json() as journalLog[]
     switch (order.value) {
       case 'ASC':
@@ -120,7 +116,7 @@ const onTailSystemd = async() => {
 
 const onTailDocker = async() => {
   try {
-    const resp  = await fetch(`/api/v1/docker/logs?${dockerReq()}`)
+    const resp  = await fetch(`/api/v1/docker/tail?${getQuery('id', 'tail')}`)
     const data  = await resp.text()
     let   lines = data.substring(0, data.length-1).split(/\r?\n|\r|\n/g)
       if (order.value == 'DESC') {
@@ -134,7 +130,7 @@ const onTailDocker = async() => {
 
 const onTailDirfiles = async() => {
   try {
-    const resp  = await fetch(`/api/v1/dirfiles/logs?${dirfilesReq()}`)
+    const resp  = await fetch(`/api/v1/dirfiles/tail?${getQuery('h', 'tail')}`)
     const data  = await resp.text()
     let   lines = data.substring(0, data.length-1).split(/\r?\n|\r|\n/g)
       if (order.value == 'DESC') {
@@ -167,7 +163,7 @@ const onStopListen = () => {
 }
 
 const onListenSystemd = ():EventSource => {
-  let es = new EventSource(`/api/v1/systemd/stream?${systemdReq()}`)
+  let es = new EventSource(`/api/v1/systemd/watch?${getQuery('name', 'tail', 'until')}`)
   es.onerror = (e) => {
     console.error(e)
     es.close()
@@ -192,7 +188,7 @@ const onListenSystemd = ():EventSource => {
 }
 
 const onListenDirfiles = ():EventSource => {
-  let es = new EventSource(`/api/v1/dirfiles/stream?${dirfilesReq()}`)
+  let es = new EventSource(`/api/v1/dirfiles/watch?${getQuery('h', 'tail')}`)
   es.onerror = (e) => {
     console.error(e)
     es.close()
@@ -215,7 +211,7 @@ const onListenDirfiles = ():EventSource => {
 }
 
 const onListenDocker = ():EventSource => {
-  let es = new EventSource(`/api/v1/docker/stream?${dockerReq()}`)
+  let es = new EventSource(`/api/v1/docker/watch?${getQuery('id', 'tail')}`)
   es.onerror = (e) => {
     console.error(e)
     es.close()
@@ -298,7 +294,7 @@ const onListen = () => {
       <el-container>
         <el-aside class="aside-layout" width="300px">
           <el-scrollbar>
-            <Menu @select="handleSelect" ref="menu"/>
+            <MenuV2 @select="handleSelect" ref="menu"/>
           </el-scrollbar>
         </el-aside>
         <el-main class="main-layout">

@@ -13,7 +13,7 @@ import ElementPlus from 'unplugin-element-plus/vite'
 export default defineConfig({
   server: {
     proxy: {
-      '/api/v1': 'http://10.18.5.5:8514'
+      '/api/v1': 'http://localhost:8514'
     }
   },
   plugins: [

@@ -1,9 +1,10 @@
-module github.com/boringcat/log-viewer
+module github.com/boringcat/just-a-log-viewer
 
 go 1.24.2
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
+	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/docker/docker v24.0.9+incompatible
 	github.com/nxadm/tail v1.4.11
@@ -13,7 +14,6 @@ require (
 
 require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
-	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect

@@ -9,38 +9,49 @@
     <el-sub-menu index="dirfiles" v-if="futures.includes('dirfiles')">
       <template #title>
         <el-icon><document /></el-icon>
-        <span>日志文件</span>
+        <span class="title">日志文件</span>
       </template>
-      <el-sub-menu v-for="root, name in fileKeys" v-bind:key="name" :index="`${root}|${name}`">
+      <el-sub-menu v-for="files, key in filesMap" v-bind:key="key" :index="key">
         <template #title>
           <el-icon><document /></el-icon>
-          <span>{{ name }}</span>
+          <span class="title">{{ key }}</span>
         </template>
-        <el-menu-item v-for="s in filesMap[name]" v-bind:key="s" :index="s">
-          {{ s }}
+        <el-menu-item v-for="s in files" v-bind:key="s.hash" :index="s.hash">
+          <span class="item">{{ s.name }}</span>
         </el-menu-item>
       </el-sub-menu>
     </el-sub-menu>
     <el-sub-menu index="systemd" v-if="futures.includes('systemd')">
       <template #title>
         <el-icon><setting /></el-icon>
-        <span>Systemd服务</span>
+        <span class="title">Systemd服务</span>
       </template>
         <el-menu-item v-for="s in services" v-bind:key="s" :index="s">
-          {{ s }}
+          <span class="item">{{ s }}</span>
         </el-menu-item>
     </el-sub-menu>
     <el-sub-menu index="docker" v-if="futures.includes('docker')">
       <template #title>
         <el-icon><setting /></el-icon>
-        <span>Docker容器</span>
+        <span class="title">Docker容器</span>
       </template>
         <el-menu-item v-for="s in containers" v-bind:key="s.id" :index="s.id">
-          {{ s.name }}
+          <span class="item">{{ s.name }}</span>
         </el-menu-item>
     </el-sub-menu>
   </el-menu>
 </template>
+
+<style lang="css" scoped>
+.item,.title {
+  white-space: normal;
+  padding:     4px 0;
+  word-break:  break-all;
+}
+.title {
+  padding:     8px 0;
+}
+</style>
 
 <script setup lang="ts">
 import {
@@ -55,12 +66,17 @@ interface container {
   name: string
 }
 
+interface fmap {
+  name: string,
+  hash: string
+}
+
 const futures = ref<string[]>([])
 const menu = ref()
 const services = ref<string[]>([])
 const containers = ref<container[]>([])
-const filesMap = ref<{[key:string]:Array<string>}>({})
-const fileKeys = ref<{[key:string]:string}>({})
+const filesMap = ref<{[key:string]:fmap[]}>({})
+// const fileKeys = ref<{[key:string]:string}>({})
 const emit = defineEmits(['select'])
 
 fetch('/api/v1/futures')
@@ -68,26 +84,23 @@ fetch('/api/v1/futures')
   .then(v=>futures.value.push(...v))
 
 const loadSystemd = async() => {
-  let resp = await fetch('/api/v1/systemd/services')
+  let resp = await fetch('/api/v1/systemd/list')
   let data = await resp.json()
   services.value.push(...data)
 }
 const loadDocker = async() => {
-  let resp = await fetch('/api/v1/docker/services')
+  let resp = await fetch('/api/v1/docker/list')
   let data = await resp.json()
   containers.value.push(...data)
 }
 const loadDirfiles = async() => {
-  let resp = await fetch('/api/v1/dirfiles/services')
+  let resp = await fetch('/api/v1/dirfiles/list')
   let files = await resp.json()
   for (const file of files) {
-    if (!Object.keys(filesMap.value).includes(file.name)) {
-      filesMap.value[file.name] = []
+    if (!Object.keys(filesMap.value).includes(file.key)) {
+      filesMap.value[file.key] = []
     }
-    filesMap.value[file.name].push(file.file)
-    if (!Object.keys(fileKeys.value).includes(file.root)) {
-      fileKeys.value[file.name] = file.root
-    }
+    filesMap.value[file.key].push({hash: file.hash, name: file.name})
   }
 
 }
@@ -126,14 +139,8 @@ const handleOpen = async (key: string, keyPath: string[]) => {
   }
 }
 const handleSelect = (key: string, keyPath: string[]) => {
-  switch (keyPath.length) {
-    case 2:
-      emit('select', {type: keyPath[0], name: keyPath[1]})
-      break
-    case 3:
-      emit('select', {type: keyPath[0], root: keyPath[1].split('|')[0], name: keyPath[2]})
-      break
-  }
+  console.log(key, keyPath)
+  emit('select', {type: keyPath[0], id: key})
 }
 
 const clean = () => {
@@ -142,7 +149,6 @@ const clean = () => {
   menu.value.close('docker')
   services.value.splice(0)
   filesMap.value = {}
-  fileKeys.value = {}
   containers.value.splice(0)
 }
 
