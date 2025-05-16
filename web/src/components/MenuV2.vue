@@ -107,6 +107,8 @@ const filterMethod = (value: string, data: Tree) => {
   return data.label.includes(value)
 }
 
+const sortByName = (a:{name:string},b:{name:string}) => a.name.localeCompare(b.name)
+
 const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => void) => {
   if (node.level === 0) {
     rootNode = node
@@ -135,11 +137,12 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
           console.error(err)
           reject()
         }).then(m=>{
-          const datas:Tree[] = []
-          let fmap = m as {[key:string]:File[]}
-          for (const key in fmap) {
+          const datas:Tree[] = [],
+                fmap = m as {[key:string]:File[]},
+                keys = Object.keys(fmap).sort();
+          for (const key of keys) {
             let ftree:Tree = {id: key, label: key, children: []}
-            for (const child of fmap[key]) {
+            for (const child of fmap[key].sort(sortByName)) {
               ftree.children?.push({id: child.hash, label: child.name, leaf: true, father:node.data.id})
             }
             datas.push(ftree)
@@ -153,7 +156,7 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
           reject()
         }).then(v=>{
           const datas:Tree[] = []
-          for (const data of v) {
+          for (const data of v.sort()) {
             datas.push({id: data, label: data, leaf: true, father:node.data.id})
           }
           resolve(datas)
@@ -165,7 +168,7 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
           reject()
         }).then(v=>{
           const datas:Tree[] = []
-          for (const data of v) {
+          for (const data of v.sort(sortByName)) {
             datas.push({id: data.id, label: data.name, leaf: true, father:node.data.id})
           }
           resolve(datas)
