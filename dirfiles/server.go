@@ -42,7 +42,7 @@ func (f *File) getHash() string {
 
 type Server struct {
 	conf      DirFileConfigs
-	fmap      sync.Map
+	fmap      *sync.Map
 	lastFetch time.Time
 }
 
@@ -59,10 +59,12 @@ func NewServer() (server.LogServer, error) {
 	return &s, nil
 }
 
-func (s *Server) doGlobWalk() error {
-	if time.Now().Sub(s.lastFetch) < 10*time.Minute {
-		return nil
+func (s *Server) doGlobWalk() {
+	if time.Since(s.lastFetch) < 10*time.Minute {
+		return
 	}
+	s.lastFetch = time.Now()
+	var newMap sync.Map
 	for cidx, conf := range s.conf {
 		maxId := max(conf.KeyId, conf.NameId)
 		for pidx, path := range conf.Paths {
@@ -83,12 +85,11 @@ func (s *Server) doGlobWalk() error {
 					Name: subm[conf.NameId],
 					path: file,
 				}
-				s.fmap.Store(f.getHash(), &f)
+				newMap.Store(f.getHash(), &f)
 			}
 		}
 	}
-	s.lastFetch = time.Now()
-	return nil
+	s.fmap = &newMap
 }
 
 func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
