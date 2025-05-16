@@ -79,6 +79,11 @@ const handleSelect = (val:selected) => {
   logSelect.id = val.id
 }
 
+const handleDoubleClick = (val:selected) => {
+  handleSelect(val)
+  onTail()
+}
+
 const getQuery = (idname:string, ...flags:string[]):URLSearchParams => {
   const q = new URLSearchParams()
   q.set(idname, logSelect.id)
@@ -298,7 +303,7 @@ const onListen = () => {
       <el-container>
         <el-aside class="aside-layout" width="300px">
           <el-scrollbar>
-            <MenuV2 @select="handleSelect" ref="menu"/>
+            <MenuV2 @select="handleSelect" @double-click="handleDoubleClick" ref="menu"/>
           </el-scrollbar>
         </el-aside>
         <el-main class="main-layout">
