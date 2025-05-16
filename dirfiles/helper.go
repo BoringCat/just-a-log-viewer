@@ -49,7 +49,7 @@ func GetTailOffset(r io.ReadSeeker, lines int64) (int64, error) {
 		if offset < bufsize {
 			bufsize = offset
 		}
-		if offset, err = r.Seek(-bufsize, io.SeekCurrent); err != nil {
+		if _, err = r.Seek(-bufsize, io.SeekCurrent); err != nil {
 			return 0, err
 		}
 		if nr, err = r.Read(buf[0:bufsize]); err != nil {

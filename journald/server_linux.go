@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"sort"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/boringcat/just-a-log-viewer/server"
@@ -34,7 +33,6 @@ func (a Units) Less(i, j int) bool { return a[i].Name < a[j].Name }
 
 type Server struct {
 	services  Units
-	lock      sync.RWMutex
 	lastFetch time.Time
 }
 
@@ -50,18 +48,12 @@ func NewServer() (server.LogServer, error) {
 }
 
 func (s *Server) getUnits() (Units, error) {
-	s.lock.RLock()
-	if time.Now().Sub(s.lastFetch) < 10*time.Minute {
+	if time.Since(s.lastFetch) < 10*time.Minute {
 		slog.Debug("从缓存获取Systemd Units")
-		defer s.lock.RUnlock()
 		return s.services, nil
 	}
-	s.lock.RUnlock()
-	if !s.lock.TryLock() {
-		slog.Debug("获取写锁失败")
-		return s.services, nil
-	}
-	defer s.lock.Unlock()
+	slog.Debug("更新Systemd Units")
+	s.lastFetch = time.Now()
 	units := Units{}
 	arg := []string{"systemctl", "list-units", "-o", "json", "--all"}
 	if len(SystemdUnitState) > 0 {
@@ -84,7 +76,6 @@ func (s *Server) getUnits() (Units, error) {
 	}
 	sort.Sort(units)
 	s.services = units
-	s.lastFetch = time.Now()
 	return s.services, nil
 }
 
@@ -308,7 +299,7 @@ func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 				return
 			} else if n <= 0 {
 				status := j.Wait(200 * time.Microsecond)
-				if time.Now().After(until) {
+				if time.Until(until) <= 0 {
 					slog.Debug("监听停止", "reason", "到达时间期限")
 					return
 				}
