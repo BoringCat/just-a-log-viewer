@@ -25,7 +25,6 @@ declare module 'vue' {
     ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
     ElTree: typeof import('element-plus/es')['ElTree']
-    Menu: typeof import('./src/components/Menu.vue')['default']
     MenuV2: typeof import('./src/components/MenuV2.vue')['default']
   }
 }

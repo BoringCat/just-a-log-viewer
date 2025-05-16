@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, type Ref } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-// import Menu from './components/Menu.vue'
 import MenuV2 from './components/MenuV2.vue'
 import { Loading, Sunny, Moon, DataAnalysis, Refresh, Document } from '@element-plus/icons-vue'
 import { useDark, useToggle } from '@vueuse/core'
@@ -254,32 +253,37 @@ const onListen = () => {
   <el-config-provider :locale="zhCn"><div>
     <el-container>
       <el-header class="header-layout flex">
-        <div style="width: 272px" class="flex">
+        <div style="width: 272px; min-width: 272px" class="flex">
           <el-icon :size="26"><DataAnalysis /></el-icon>
           <p>查看日志</p>
           <el-button type="primary" :icon="Refresh" class="push" @click="menu.clean()">刷新</el-button>
         </div>
         <el-divider direction="vertical" />
-        <p class="selected">最后</p>
-        <el-input-number v-model="tail" :min="0"/>
-        <p class="selected">行</p>
+        <el-scrollbar>
+          <div class="scrollbar-flex-content">
+            <p class="selected">最后</p>
+            <el-input-number v-model="tail" :min="0"/>
+            <p class="selected">行</p>
+            <el-divider direction="vertical" />
+            <p class="selected">页面限制</p>
+            <el-input-number v-model="maxline" :min="0"/>
+            <p class="selected">行</p>
+            <el-divider direction="vertical" />
+            <el-date-picker
+              v-model="until"
+              type="datetime"
+              placeholder="结束时间"
+            />
+            <el-divider direction="vertical" />
+            <el-radio-group v-model="order" @change="reverseLog">
+              <el-radio-button label="正序" value="ASC" />
+              <el-radio-button label="反序" value="DESC" />
+            </el-radio-group>
+            <el-divider direction="vertical" />
+            <el-checkbox v-model="warp" label="换行" border @change="warpChange" />
+          </div>
+        </el-scrollbar>
         <el-divider direction="vertical" />
-        <p class="selected">页面限制</p>
-        <el-input-number v-model="maxline" :min="0"/>
-        <p class="selected">行</p>
-        <el-divider direction="vertical" />
-        <el-date-picker
-          v-model="until"
-          type="datetime"
-          placeholder="结束时间"
-        />
-        <el-divider direction="vertical" />
-        <el-radio-group v-model="order" @change="reverseLog">
-          <el-radio-button label="正序" value="ASC" />
-          <el-radio-button label="反序" value="DESC" />
-        </el-radio-group>
-        <el-divider direction="vertical" />
-        <el-checkbox v-model="warp" label="换行" border @change="warpChange" />
         <template v-if="listenEvent !== undefined">
           <el-button type="danger" class="push" :icon="Loading" @click="onStopListen">停 止</el-button>
         </template>
@@ -310,6 +314,12 @@ const onListen = () => {
 </template>
 
 <style scoped>
+.scrollbar-flex-content {
+  height: var(--el-header-height);
+  display: flex;
+  width: max-content;
+  align-items: center;
+}
 .selected {
   margin: 0 6px;
 }

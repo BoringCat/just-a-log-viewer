@@ -177,7 +177,7 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
   }
 }
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'double-click'])
 
 const handleSelect = (data: Tree, node: Node) => {
   if (node.isLeaf) emit('select', {type: data.father, id: data.id})
