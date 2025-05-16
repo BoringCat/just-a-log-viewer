@@ -24,7 +24,7 @@ func parserArgs() {
 	app.Flag("config", "配置文件路径").Short('c').ExistingFileVar(&dirfiles.ConfigFile)
 	app.Flag("listen", "监听地址").Default(":8514").Short('l').TCPVar(&listen)
 	app.Flag("systemd", "启用Systemd日志功能").BoolVar(&journald.Enabled)
-	app.Flag("systemd-unit-state", "获取systemd unit的state过滤").Default("running,exited,failed").StringVar(&journald.SystemdUnitState)
+	app.Flag("systemd-unit-state", "获取systemd unit的state过滤").Default("running,exited,failed,dead").StringVar(&journald.SystemdUnitState)
 	app.Flag("docker", "启用Docker日志功能").BoolVar(&docker.Enabled)
 	app.Flag("buffer", "文件扫描缓冲区大小").Default("16KiB").BytesVar(&G_bufsize)
 	debug := app.Flag("debug", "输出Debug日志").Short('d').Bool()
