@@ -14,6 +14,7 @@
     :highlight-current="true"
     :filter-node-method="filterMethod"
     @current-change="handleSelect"
+    @node-click="handleClick"
   >
     <template #default="{ node }">
       <span class="item" v-if="node.isLeaf">{{ node.label }}</span>
@@ -93,7 +94,8 @@ const loadDirfiles = async() => {
 }
 
 const query = ref('')
-const data = ref([])
+let doubleClickTimer:number|null = null
+let doubleClickTree:Tree|null = null
 let rootNode:Node
 const treeRef = ref<TreeInstance>()
 watch(query, (val) => {
@@ -177,10 +179,36 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
   }
 }
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'double-click'])
 
 const handleSelect = (data: Tree, node: Node) => {
   if (node.isLeaf) emit('select', {type: data.father, id: data.id})
+}
+
+const handleClick = (data: Tree, node: Node) => {
+  if (!node.isLeaf) return
+  if (doubleClickTimer === null) {
+    doubleClickTree = data
+    doubleClickTimer = setTimeout(() => {
+      doubleClickTimer = null
+      doubleClickTree = null
+    }, 300)
+  } else {
+    if (doubleClickTree === data) {
+      emit('double-click', {type: data.father, id: data.id})
+      clearTimeout(doubleClickTimer)
+      doubleClickTree = null
+      doubleClickTimer = null
+    } else {
+      clearTimeout(doubleClickTimer)
+      doubleClickTree = data
+      doubleClickTimer = setTimeout(() => {
+        doubleClickTimer = null
+        doubleClickTree = null
+      }, 300)
+    }
+      
+  }
 }
 
 const clean = () => {
