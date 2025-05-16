@@ -80,6 +80,10 @@ func (s *Server) getUnits() (Units, error) {
 }
 
 func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		server.HTTPError(w, http.StatusMethodNotAllowed)
+		return
+	}
 	units, err := s.getUnits()
 	if err != nil {
 		slog.Error("获取Systemd Units异常", "err", err)
@@ -146,6 +150,10 @@ func GetHttpSystemdJournal(q url.Values) (j *sdjournal.Journal, tail uint64, unt
 }
 
 func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		server.HTTPError(w, http.StatusMethodNotAllowed)
+		return
+	}
 	q := r.URL.Query()
 	if err := server.EnsureKeys(q, "name"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -213,6 +221,10 @@ func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		server.HTTPError(w, http.StatusMethodNotAllowed)
+		return
+	}
 	q := r.URL.Query()
 	if err := server.EnsureKeys(q, "name"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
