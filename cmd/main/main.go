@@ -12,6 +12,7 @@ import (
 	"github.com/boringcat/just-a-log-viewer/docker"
 	"github.com/boringcat/just-a-log-viewer/journald"
 	"github.com/boringcat/just-a-log-viewer/server"
+	"github.com/boringcat/just-a-log-viewer/web"
 )
 
 var (
@@ -41,6 +42,6 @@ func main() {
 	parserArgs()
 
 	mux := server.NewHttpMux()
-	mux.Handle("/", MustGetWebHandler())
+	mux.Handle("/", web.MustGetWebHandler())
 	http.ListenAndServe(listen.String(), mux)
 }

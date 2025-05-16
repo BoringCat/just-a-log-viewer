@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"embed"
@@ -6,11 +6,11 @@ import (
 	"net/http"
 )
 
-//go:embed web/dist
+//go:embed dist
 var web embed.FS
 
 func MustGetWebHandler() http.Handler {
-	fs, err := fs.Sub(web, "web/dist")
+	fs, err := fs.Sub(web, "dist")
 	if err != nil {
 		panic(err)
 	}
