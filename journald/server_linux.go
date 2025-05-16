@@ -63,7 +63,7 @@ func (s *Server) getUnits() (Units, error) {
 	}
 	defer s.lock.Unlock()
 	units := Units{}
-	arg := []string{"systemctl", "list-units", "-o", "json"}
+	arg := []string{"systemctl", "list-units", "-o", "json", "--all"}
 	if len(SystemdUnitState) > 0 {
 		arg = append(arg, fmt.Sprintf("--state=%s", SystemdUnitState))
 	}
