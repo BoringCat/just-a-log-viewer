@@ -7,7 +7,7 @@ import (
 )
 
 func globTestMain() {
-	confs, err := dirfiles.ReadConfig(configFile)
+	confs, err := dirfiles.ReadConfig(dirfiles.ConfigFile)
 	if err != nil {
 		panic(err)
 	}

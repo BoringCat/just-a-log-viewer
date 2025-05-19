@@ -29,8 +29,6 @@ BIN_FILE  := ${DISTDIR}/${FILENAME}
 BUILD_CMD := go build -trimpath -ldflags "-s -w -X main.version=${VERSION} -X main.buildDate=${MAKEDATE} -X main.commit=${COMMIT}"
 # 入口文件或文件夹
 MAIN      := ./cmd/main
-# 入口文件或文件夹
-TOOLS     := ./cmd/tools
 # 开启CGO
 export CGO_ENABLED := 1
 export NODE_VERSION := 20
@@ -39,7 +37,6 @@ export NODE_VERSION := 20
 .PHONY: dist
 dist:
 	$(BUILD_CMD) -o $(BIN_FILE) $(MAIN)
-	env CGO_ENABLED=0 $(BUILD_CMD) -o $(BIN_FILE)-tools $(TOOLS)
 
 # 获取支持的所有系统和架构，排除掉不想要的，作为编译目标
 DISTLIST:=$(shell go tool dist list | grep -P '^(darwin|linux|windows)/' | grep -P '386|64|390' | sed 's~/~.~g')
@@ -67,8 +64,7 @@ dist.%:
 	@bash -c '[ "$(GOOS)" = "windows" ] && EXT=.exe; export GOOS=$(GOOS) GOARCH=$(GOARCH); \
 	[ "$(GOOS)" != "linux" ] || [ "$(GOARCH)" != "amd64" -a "$(GOARCH)" != "386" ] && export CGO_ENABLED=0; \
 	set -x; \
-	$(BUILD_CMD) -o $(BIN_FILE)-$(GOOS)-$(GOARCH)$${EXT} $(MAIN); \
-	env CGO_ENABLED=0 $(BUILD_CMD) -o $(BIN_FILE)-tools-$(GOOS)-$(GOARCH)$${EXT} $(TOOLS)'
+	$(BUILD_CMD) -o $(BIN_FILE)-$(GOOS)-$(GOARCH)$${EXT} $(MAIN)'
 
 # 定义 make dep.* 为执行 go mod 的操作
 .PHONY: deps.%
