@@ -51,6 +51,10 @@ func (s *Server) getClient(ctx context.Context) (*client.Client, error) {
 }
 
 func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		server.HTTPError(w, http.StatusMethodNotAllowed)
+		return
+	}
 	client, err := s.getClient(r.Context())
 	containers, err := client.ContainerList(r.Context(), types.ContainerListOptions{})
 	if err != nil {
@@ -74,6 +78,10 @@ func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		server.HTTPError(w, http.StatusMethodNotAllowed)
+		return
+	}
 	q := r.URL.Query()
 	if err := server.EnsureKeys(q, "id"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -109,6 +117,10 @@ func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		server.HTTPError(w, http.StatusMethodNotAllowed)
+		return
+	}
 	q := r.URL.Query()
 	if err := server.EnsureKeys(q, "id"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
