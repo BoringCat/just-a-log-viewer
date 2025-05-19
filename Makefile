@@ -28,7 +28,7 @@ BIN_FILE  := ${DISTDIR}/${FILENAME}
 # 编译命令
 BUILD_CMD := go build -trimpath -ldflags "-s -w -X main.version=${VERSION} -X main.buildDate=${MAKEDATE} -X main.commit=${COMMIT}"
 # 入口文件或文件夹
-MAIN      := ./
+MAIN      := ./cmd/main
 # 开启CGO
 export CGO_ENABLED := 1
 export NODE_VERSION := 20
