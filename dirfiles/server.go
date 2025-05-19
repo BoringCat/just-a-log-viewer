@@ -65,7 +65,7 @@ func (s *Server) doGlobWalk() {
 	s.lastFetch = time.Now()
 	var newMap sync.Map
 	for f := range DoGlobWalk(s.conf) {
-		newMap.Store(f.getHash(), &f)
+		newMap.Store(f.getHash(), f)
 	}
 	s.fmap = &newMap
 }
