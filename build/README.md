@@ -8,12 +8,12 @@
 
 ```bash
 docker build -t just-a-log-viewer:builder build
-rm -rf build/cache build/go
-mkdir build/cache build/go
+# 一定得_开头，否则go会扫描它们
+mkdir build/_cache build/_go
 docker run --rm \
     -v $PWD:/app \
-    -v $PWD/build/cache:/.cache \
-    -v $PWD/build/go:/go \
+    -v $PWD/build/_cache:/.cache \
+    -v $PWD/build/_go:/go \
     -w /app --user `id -u`:`id -g` \
     -it just-a-log-viewer:builder \
     bash -c 'make deps && make dist.linux.amd64 dist.linux.386'
