@@ -5,7 +5,7 @@ go 1.24.2
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137
-	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
+	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/docker/docker v24.0.9+incompatible
 	github.com/nxadm/tail v1.4.11
 	github.com/pkg/errors v0.9.1
