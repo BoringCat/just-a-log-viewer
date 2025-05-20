@@ -1,8 +1,9 @@
 FROM centos:7
 
+# 你需要自己准备 _repos/CentOS-Base.repo
 # mirrorlist.centos.org 不可用
 # /etc/yum.repos.d/CentOS-Vault.repo 没有 7.9
-COPY repos/ /etc/yum.repos.d/
+COPY _repos/ /etc/yum.repos.d/
 
 RUN --mount=type=cache,target=/var/cache set -xe\
  && yum makecache fast\

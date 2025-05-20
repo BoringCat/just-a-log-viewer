@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/boringcat/just-a-log-viewer/server"
-	"github.com/coreos/go-systemd/sdjournal"
+	"github.com/coreos/go-systemd/v22/sdjournal"
 )
 
 type Unit struct {
@@ -253,7 +253,8 @@ func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _, err = j.GetCursor(); err != nil {
+	var cur string
+	if cur, err = j.GetCursor(); err != nil {
 		fmt.Println("GetCursor error:", err)
 		http.Error(w, "404 Not Found", http.StatusNotFound)
 		return
@@ -272,7 +273,6 @@ func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	until_ts := uint64(until.UnixMicro())
-	hasNew := true
 
 	for {
 		select {
@@ -280,12 +280,13 @@ func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 			slog.Debug("监听停止", "reason", "客户端断开连接")
 			return
 		default:
-			if hasNew {
-				e, err := j.GetEntry()
-				if err != nil {
-					slog.Debug("监听停止", "reason", "获取Entry异常", "err", err)
-					return
-				}
+			e, err := j.GetEntry()
+			if err != nil {
+				slog.Debug("监听停止", "reason", "获取Entry异常", "err", err)
+				return
+			}
+			if cur != e.Cursor {
+				cur = e.Cursor
 				if e.RealtimeTimestamp > until_ts {
 					slog.Debug("监听停止", "reason", "到达时间期限")
 					return
@@ -310,12 +311,11 @@ func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 				slog.Debug("监听停止", "reason", "获取下一条Entry异常", "err", err)
 				return
 			} else if n <= 0 {
-				status := j.Wait(200 * time.Microsecond)
+				j.Wait(200 * time.Millisecond)
 				if time.Until(until) <= 0 {
 					slog.Debug("监听停止", "reason", "到达时间期限")
 					return
 				}
-				hasNew = status == sdjournal.SD_JOURNAL_APPEND
 				continue
 			}
 		}
