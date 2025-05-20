@@ -41,7 +41,6 @@ export default defineConfig({
               return "modules/vendor";
             }
           } else if (id.includes('/src/') || id.endsWith('index.html')) {
-            console.log(id)
             // 如果模块ID包含'src'，即源码，则将其归入'index' chunk
             return "index";
           } else {
