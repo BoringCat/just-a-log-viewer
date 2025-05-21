@@ -32,6 +32,7 @@ func parserArgs() string {
 	cmdServer.Flag("systemd", "启用Systemd日志功能").BoolVar(&journald.Enabled)
 	cmdServer.Flag("systemd-unit-state", "获取systemd unit的state过滤").Default("running,exited,failed,dead").StringVar(&journald.SystemdUnitState)
 	cmdServer.Flag("docker", "启用Docker日志功能").BoolVar(&docker.Enabled)
+	cmdServer.Flag("docker-all-container", "列出所有docker容器").BoolVar(&docker.AllContainer)
 	cmdServer.Flag("buffer", "文件扫描缓冲区大小").Default("16KiB").BytesVar(&G_bufsize)
 
 	tools := app.Command("tools", "工具")

@@ -1,5 +1,6 @@
 package docker
 
 var (
-	Enabled bool
+	Enabled      bool
+	AllContainer bool
 )

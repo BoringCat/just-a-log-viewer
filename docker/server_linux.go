@@ -56,7 +56,7 @@ func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client, err := s.getClient(r.Context())
-	containers, err := client.ContainerList(r.Context(), types.ContainerListOptions{})
+	containers, err := client.ContainerList(r.Context(), types.ContainerListOptions{All: AllContainer})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
