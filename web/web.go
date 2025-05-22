@@ -9,10 +9,10 @@ import (
 //go:embed dist
 var web embed.FS
 
-func MustGetWebHandler() http.Handler {
+func MustGetWebHandler(prefix string) http.Handler {
 	fs, err := fs.Sub(web, "dist")
 	if err != nil {
 		panic(err)
 	}
-	return http.FileServer(http.FS(fs))
+	return http.StripPrefix(prefix, http.FileServer(http.FS(fs)))
 }

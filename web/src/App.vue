@@ -102,7 +102,7 @@ const getQuery = (idname:string, ...flags:string[]):URLSearchParams => {
 
 const onTailSystemd = async() => {
   try {
-    const resp  = await fetch(`/api/v1/systemd/tail?${getQuery('name', 'tail', 'until')}`)
+    const resp  = await fetch(`./api/v1/systemd/tail?${getQuery('name', 'tail', 'until')}`)
     let   datas = await resp.json() as journalLog[]
     switch (order.value) {
       case 'ASC':
@@ -120,7 +120,7 @@ const onTailSystemd = async() => {
 
 const onTailDocker = async() => {
   try {
-    const resp  = await fetch(`/api/v1/docker/tail?${getQuery('id', 'tail')}`)
+    const resp  = await fetch(`./api/v1/docker/tail?${getQuery('id', 'tail')}`)
     const data  = await resp.text()
     let   lines = data.substring(0, data.length-1).split(/\r?\n|\r|\n/g)
       if (order.value == 'DESC') {
@@ -134,7 +134,7 @@ const onTailDocker = async() => {
 
 const onTailDirfiles = async() => {
   try {
-    const resp  = await fetch(`/api/v1/dirfiles/tail?${getQuery('h', 'tail')}`)
+    const resp  = await fetch(`./api/v1/dirfiles/tail?${getQuery('h', 'tail')}`)
     const data  = await resp.text()
     let   lines = data.substring(0, data.length-1).split(/\r?\n|\r|\n/g)
       if (order.value == 'DESC') {
@@ -167,7 +167,7 @@ const onStopListen = () => {
 }
 
 const onListenSystemd = ():EventSource => {
-  let es = new EventSource(`/api/v1/systemd/watch?${getQuery('name', 'tail', 'until')}`)
+  let es = new EventSource(`./api/v1/systemd/watch?${getQuery('name', 'tail', 'until')}`)
   es.onerror = (e) => {
     console.error(e)
     es.close()
@@ -192,7 +192,7 @@ const onListenSystemd = ():EventSource => {
 }
 
 const onListenDirfiles = ():EventSource => {
-  let es = new EventSource(`/api/v1/dirfiles/watch?${getQuery('h', 'tail')}`)
+  let es = new EventSource(`./api/v1/dirfiles/watch?${getQuery('h', 'tail')}`)
   es.onerror = (e) => {
     e.preventDefault()
     es.close()
@@ -215,7 +215,7 @@ const onListenDirfiles = ():EventSource => {
 }
 
 const onListenDocker = ():EventSource => {
-  let es = new EventSource(`/api/v1/docker/watch?${getQuery('id', 'tail')}`)
+  let es = new EventSource(`./api/v1/docker/watch?${getQuery('id', 'tail')}`)
   es.onerror = (e) => {
     console.error(e)
     es.close()

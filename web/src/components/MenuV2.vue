@@ -78,15 +78,15 @@ interface ListDirFileResp {
 }
 
 const loadSystemd = async() => {
-  let resp = await fetch('/api/v1/systemd/list')
+  let resp = await fetch('./api/v1/systemd/list')
   return await resp.json()
 }
 const loadDocker = async() => {
-  let resp = await fetch('/api/v1/docker/list')
+  let resp = await fetch('./api/v1/docker/list')
   return await resp.json()
 }
 const loadDirfiles = async():Promise<ListDirFileResp> => {
-  let resp = await fetch('/api/v1/dirfiles/list')
+  let resp = await fetch('./api/v1/dirfiles/list')
   return await resp.json()
 }
 
@@ -149,7 +149,7 @@ const getLeveledFiles = (father:string, level: number, files:File[]):Tree[] => {
 const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => void) => {
   if (node.level === 0) {
     rootNode = node
-    fetch('/api/v1/futures').then(resp=>resp.json())
+    fetch('./api/v1/futures').then(resp=>resp.json())
     .then(futures => {
       const datas:Tree[] = []
       for (const future of futures) {

@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func NewHttpMux() *http.ServeMux {
+func NewHttpMux(prefix string) *http.ServeMux {
 	mux := http.NewServeMux()
 	futures.Range(func(key, value any) bool {
 		slog.Debug("初始化模块", "future", key)
@@ -19,9 +19,9 @@ func NewHttpMux() *http.ServeMux {
 			slog.Info("跳过空模块初始化", "future", key)
 			return true
 		}
-		mux.HandleFunc(fmt.Sprintf("/api/v%d/%s/list", API_VERSION, key), obj.HandleList)
-		mux.HandleFunc(fmt.Sprintf("/api/v%d/%s/tail", API_VERSION, key), obj.HandleTail)
-		mux.HandleFunc(fmt.Sprintf("/api/v%d/%s/watch", API_VERSION, key), obj.HandleWatch)
+		mux.HandleFunc(fmt.Sprintf("%s/api/v%d/%s/list", prefix, API_VERSION, key), obj.HandleList)
+		mux.HandleFunc(fmt.Sprintf("%s/api/v%d/%s/tail", prefix, API_VERSION, key), obj.HandleTail)
+		mux.HandleFunc(fmt.Sprintf("%s/api/v%d/%s/watch", prefix, API_VERSION, key), obj.HandleWatch)
 		enableFutures = append(enableFutures, key.(string))
 		return true
 	})
@@ -29,7 +29,7 @@ func NewHttpMux() *http.ServeMux {
 	if err != nil {
 		panic(err)
 	}
-	mux.HandleFunc(fmt.Sprintf("/api/v%d/futures", API_VERSION), func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(fmt.Sprintf("%s/api/v%d/futures", prefix, API_VERSION), func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(futures_data)
 	})
