@@ -1,8 +1,6 @@
 package dirfiles
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,34 +20,27 @@ var (
 	NEWLINE_LINUX   = []byte{'\n'}
 	NEWLINE_MACOS   = []byte{'\r'}
 	NEWLINE_WINDOWS = []byte{'\r', '\n'}
-	ConfigFile      string
+	ConfigFilePath  string
 )
 
 type File struct {
-	Hash string `json:"hash"`
-	Key  string `json:"key"`
-	Name string `json:"name"`
-	Path string `json:"-"`
-}
-
-func (f *File) getHash() string {
-	h := sha1.New()
-	fmt.Fprintf(h, "%q\x00%q\x00%q", f.Key, f.Name, f.Path)
-	f.Hash = hex.EncodeToString(h.Sum(nil))
-	return f.Hash
+	Hash   string            `json:"hash"`
+	Name   string            `json:"name"`
+	Path   string            `json:"-"`
+	Labels map[string]string `json:"labels"`
 }
 
 type Server struct {
-	conf      DirFileConfigs
+	conf      *Config
 	fmap      *sync.Map
 	lastFetch time.Time
 }
 
 func NewServer() (server.LogServer, error) {
-	if len(ConfigFile) == 0 {
+	if len(ConfigFilePath) == 0 {
 		return nil, nil
 	}
-	confs, err := ReadConfig(ConfigFile)
+	confs, err := ReadConfig(ConfigFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +56,7 @@ func (s *Server) doGlobWalk() {
 	s.lastFetch = time.Now()
 	var newMap sync.Map
 	for f := range DoGlobWalk(s.conf) {
-		newMap.Store(f.getHash(), f)
+		newMap.Store(f.Hash, f)
 	}
 	s.fmap = &newMap
 }
@@ -77,16 +68,22 @@ func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
 	}
 	s.doGlobWalk()
 	w.Header().Set("Content-Type", "application/json")
-	sep := "["
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
+	fmt.Fprint(w, `{"keys":`)
+	enc.Encode(s.conf.Keys)
+	fmt.Fprint(w, `,"files":`)
+	sep := "["
 	s.fmap.Range(func(key, value any) bool {
 		fmt.Fprint(w, sep)
 		enc.Encode(value)
 		sep = ","
 		return true
 	})
-	fmt.Fprint(w, "]")
+	if sep == "[" {
+		fmt.Fprint(w, sep)
+	}
+	fmt.Fprint(w, "]}")
 }
 
 func (s *Server) getFile(h string) (string, error) {
@@ -133,7 +130,7 @@ func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
 
 	fd, err := os.Open(fpath)
 	if err != nil {
-		server.HTTPError(w, http.StatusNotFound)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer fd.Close()

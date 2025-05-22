@@ -194,7 +194,7 @@ const onListenSystemd = ():EventSource => {
 const onListenDirfiles = ():EventSource => {
   let es = new EventSource(`/api/v1/dirfiles/watch?${getQuery('h', 'tail')}`)
   es.onerror = (e) => {
-    console.error(e)
+    e.preventDefault()
     es.close()
     listenEvent.value = undefined
   }
@@ -260,8 +260,11 @@ const onListen = () => {
       <el-header class="header-layout flex">
         <div style="width: 272px; min-width: 272px" class="flex">
           <el-icon :size="26"><DataAnalysis /></el-icon>
-          <p>查看日志</p>
-          <el-button type="primary" :icon="Refresh" class="push" @click="menu.clean()">刷新</el-button>
+          <p class="title">查看日志</p>
+          <el-tooltip content="小心卡顿" placement="bottom">
+            <el-button type="primary" text size="small" class="push" @click="menu.openall()">展开所有</el-button>
+          </el-tooltip>
+          <el-button type="primary" :icon="Refresh" @click="menu.clean()">刷新</el-button>
         </div>
         <el-divider direction="vertical" />
         <el-scrollbar>
@@ -319,6 +322,9 @@ const onListen = () => {
 </template>
 
 <style scoped>
+.title {
+  font-size: 125%;
+}
 .scrollbar-flex-content {
   height: var(--el-header-height);
   display: flex;

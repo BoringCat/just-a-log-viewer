@@ -74,6 +74,9 @@ func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
 		})
 		sep = ","
 	}
+	if sep == "[" {
+		fmt.Fprint(w, sep)
+	}
 	fmt.Fprint(w, "]")
 }
 

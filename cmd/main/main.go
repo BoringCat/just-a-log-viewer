@@ -27,7 +27,7 @@ func parserArgs() string {
 	debug := app.Flag("debug", "输出Debug日志").Short('d').Bool()
 
 	cmdServer = app.Command("server", "启动服务").Default()
-	cmdServer.Flag("config", "配置文件路径").Short('c').ExistingFileVar(&dirfiles.ConfigFile)
+	cmdServer.Flag("config", "配置文件路径").Short('c').ExistingFileVar(&dirfiles.ConfigFilePath)
 	cmdServer.Flag("listen", "监听地址").Default(":8514").Short('l').TCPVar(&listen)
 	cmdServer.Flag("systemd", "启用Systemd日志功能").BoolVar(&journald.Enabled)
 	cmdServer.Flag("systemd-unit-state", "获取systemd unit的state过滤").Default("running,exited,failed,dead").StringVar(&journald.SystemdUnitState)
@@ -37,7 +37,7 @@ func parserArgs() string {
 
 	tools := app.Command("tools", "工具")
 	globTest = tools.Command("glob-test", "测试glob配置")
-	globTest.Flag("config", "配置文件路径").Short('c').Required().ExistingFileVar(&dirfiles.ConfigFile)
+	globTest.Flag("config", "配置文件路径").Short('c').Required().ExistingFileVar(&dirfiles.ConfigFilePath)
 
 	cmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 	server.GlobalBufSize = int(G_bufsize)
