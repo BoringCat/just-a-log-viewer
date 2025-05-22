@@ -1,0 +1,12 @@
+keys:
+- 命名空间
+- Pod
+- 容器
+files:
+- paths:
+  - /var/log/pods/*/*/*.log
+  labels:
+    __name__: '[^_]+/[^/]+/[^/]+\.log$'
+    命名空间:  pods/([^_]+)
+    Pod:   pods/[^_]+_([^_]+)
+    容器:   '([^/]+)/[^/]+\.log$'
