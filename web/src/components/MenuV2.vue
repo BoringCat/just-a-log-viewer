@@ -152,7 +152,7 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
     fetch('./api/v1/futures').then(resp=>resp.json())
     .then(futures => {
       const datas:Tree[] = []
-      for (const future of futures) {
+      for (const future of futures.sort()) {
         switch (future) {
           case "dirfiles":
             datas.push({ key: "dirfiles", father: "dirfiles", value: "日志文件" });
@@ -180,27 +180,27 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
         })
       break
       case "systemd":
-        loadSystemd().catch(err=>{
-          console.error(err)
-          reject()
-        }).then(v=>{
+        loadSystemd().then(v=>{
           const datas:Tree[] = []
           for (const data of v.sort()) {
             datas.push({key: data, value: data, leaf: true, father:node.data.father})
           }
           resolve(datas)
+        }).catch(err=>{
+          console.error(err)
+          reject()
         })
       break
       case "docker":
-        loadDocker().catch(err=>{
-          console.error(err)
-          reject()
-        }).then(v=>{
+        loadDocker().then(v=>{
           const datas:Tree[] = []
           for (const data of v.sort(sortByName)) {
-            datas.push({key: data.key, value: data.name, leaf: true, father:node.data.father})
+            datas.push({key: data.id, value: data.name, leaf: true, father:node.data.father})
           }
           resolve(datas)
+        }).catch(err=>{
+          console.error(err)
+          reject()
         })
       break
       default:
@@ -214,6 +214,7 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
 const emit = defineEmits(['select', 'double-click'])
 
 const handleSelect = (data: Tree, node: Node) => {
+  console.log(node)
   if (node.isLeaf) emit('select', {type: data.father, id: data.key})
 }
 
