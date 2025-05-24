@@ -2,6 +2,8 @@ package dirfiles
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"iter"
@@ -88,10 +90,18 @@ func GetTailOffsetByFileName(fp string, lines int64) (int64, error) {
 	return GetTailOffset(fd, lines)
 }
 
-func DoGlobWalk(confs DirFileConfigs) iter.Seq[*File] {
+func GetHash(name, path string, keys []string, labels map[string]string) string {
+	h := sha1.New()
+	fmt.Fprintf(h, "%q\x00%q", name, path)
+	for _, k := range keys {
+		fmt.Fprintf(h, "\x00%q\xff%q", k, labels[k])
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func DoGlobWalk(confs *Config) iter.Seq[*File] {
 	return func(yield func(*File) bool) {
-		for cidx, conf := range confs {
-			maxId := max(conf.KeyId, conf.NameId)
+		for cidx, conf := range confs.Files {
 			for pidx, path := range conf.Paths {
 				files, err := filepath.Glob(path)
 				if err != nil {
@@ -100,15 +110,12 @@ func DoGlobWalk(confs DirFileConfigs) iter.Seq[*File] {
 				}
 				slog.Debug("遍历文件列表", "files", files, "glob", path, "cidx", cidx, "pidx", pidx)
 				for _, file := range files {
-					subm := conf.Regex.FindStringSubmatch(file)
-					if len(subm) < maxId {
-						slog.Error("正则表达式匹配失败", "file", file, "regex", conf.Regex.String(), "cidx", cidx, "pidx", pidx)
-						continue
-					}
+					name, labels := conf.GetKeyMap(file)
 					ok := yield(&File{
-						Key:  subm[conf.KeyId],
-						Name: subm[conf.NameId],
-						Path: file,
+						Path:   file,
+						Name:   name,
+						Labels: labels,
+						Hash:   GetHash(name, path, confs.Keys, labels),
 					})
 					if !ok {
 						return

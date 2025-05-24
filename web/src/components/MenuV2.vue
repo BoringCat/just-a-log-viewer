@@ -1,26 +1,29 @@
 <template>
-  <el-input
-    v-model="query"
-    style="margin-left: 16px; max-width: 268px"
-    placeholder="查询"
-  />
-  <el-tree
-    style="max-width: 300px"
-    ref="treeRef"
-    :props="props"
-    :load="loadNode"
-    node-key="id"
-    lazy
-    :highlight-current="true"
-    :filter-node-method="filterMethod"
-    @current-change="handleSelect"
-    @node-click="handleClick"
-  >
-    <template #default="{ node }">
-      <span class="item" v-if="node.isLeaf">{{ node.label }}</span>
-      <span class="title" v-else>{{ node.label }}</span>
-    </template>
-  </el-tree>
+  <div>
+    <el-input
+      v-model="query"
+      style="margin-left: 16px; max-width: 268px"
+      placeholder="查询"
+    />
+    <el-tree
+      style="max-width: 300px"
+      ref="treeRef"
+      :props="props"
+      :load="loadNode"
+      node-key="key"
+      lazy
+      :indent="8"
+      :highlight-current="true"
+      :filter-node-method="filterMethod"
+      @current-change="handleSelect"
+      @node-click="handleClick"
+    >
+      <template #default="{ node }">
+        <span class="item" v-if="node.isLeaf">{{ node.label }}</span>
+        <span class="title" v-else>{{ node.label }}</span>
+      </template>
+    </el-tree>
+  </div>
 </template>
 
 <style lang="css" scoped>
@@ -34,7 +37,7 @@
 }
 .title {
   padding:     6px 0;
-  font-size:   1.1rem;
+  font-weight: 500;
 }
 </style>
 
@@ -52,48 +55,43 @@ interface TreeData {
   [key: string]: any
 }
 const props = {
-  value: 'id',
-  label: 'label',
-  children: 'children',
+  value: 'key',
+  label: 'value',
   class: 'line',
   isLeaf: 'leaf'
 }
 interface Tree {
-  id:        string
-  label:     string
-  children?: Tree[],
-  father?:   string,
+  key:       string
+  value:     string
+  children?: File[],
+  father:    string,
   leaf?:     boolean
 }
 interface File {
+  hash: string,
   name: string,
-  hash: string
+  labels: {[key:string]:string}
+}
+interface ListDirFileResp {
+  keys: string[],
+  files: File[],
 }
 
 const loadSystemd = async() => {
-  let resp = await fetch('/api/v1/systemd/list')
+  let resp = await fetch('./api/v1/systemd/list')
   return await resp.json()
 }
 const loadDocker = async() => {
-  let resp = await fetch('/api/v1/docker/list')
+  let resp = await fetch('./api/v1/docker/list')
   return await resp.json()
 }
-const loadDirfiles = async() => {
-  let resp = await fetch('/api/v1/dirfiles/list')
-  let files = await resp.json()
-  const filesMap:{[key:string]:File[]} = {}
-  for (const file of files) {
-    let arr = filesMap[file.key]
-    if (arr === undefined) {
-      filesMap[file.key] = []
-      arr = filesMap[file.key]
-    }
-    arr.push({hash: file.hash, name: file.name})
-  }
-  return filesMap
+const loadDirfiles = async():Promise<ListDirFileResp> => {
+  let resp = await fetch('./api/v1/dirfiles/list')
+  return await resp.json()
 }
 
 const query = ref('')
+const dirfileKeys:string[] = []
 let doubleClickTimer:number|null = null
 let doubleClickTree:Tree|null = null
 let rootNode:Node
@@ -104,50 +102,81 @@ watch(query, (val) => {
 
 const filterMethod = (value: string, data: Tree) => {
   if (!value) return true
-  return data.label.includes(value)
+  return data.key.includes(value)
 }
 
 const sortByName = (a:{name:string},b:{name:string}) => a.name.localeCompare(b.name)
+const sortByValue = (a:{value:string},b:{value:string}) => a.value.localeCompare(b.value)
+
+const getLeveledFiles = (father:string, level: number, files:File[]):Tree[] => {
+  const isEnd = level > dirfileKeys.length,
+        datas:Tree[] = []
+  if (isEnd) {
+    for (const f of files) {
+      datas.push({
+        key:    f.hash,
+        value:  f.name,
+        leaf:   isEnd,
+        father: father,
+      })
+    }
+    datas.sort(sortByValue)
+  } else {
+    const childrens:{[key:string]: File[]} = {},
+          thisKey = dirfileKeys[level - 1];
+    for (const f of files) {
+      let key = f.labels[thisKey] || "（空）",
+          children = childrens[key]
+      if (children === undefined) {
+        children = [f]
+        childrens[key] = children
+      } else {
+        children.push(f)
+      }
+    }
+    for (const key of Object.keys(childrens).sort()) {
+      datas.push({
+        key: `${thisKey}: ${key}`,
+        value: `${thisKey}: ${key}`,
+        children: childrens[key],
+        father: father,
+      })
+    }
+  }
+  return datas
+}
 
 const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => void) => {
   if (node.level === 0) {
     rootNode = node
-    fetch('/api/v1/futures').then(resp=>resp.json())
+    fetch('./api/v1/futures').then(resp=>resp.json())
     .then(futures => {
       const datas:Tree[] = []
       for (const future of futures) {
         switch (future) {
           case "dirfiles":
-            datas.push({ id: "dirfiles", label: "日志文件" });
+            datas.push({ key: "dirfiles", father: "dirfiles", value: "日志文件" });
           break;
           case "systemd":
-            datas.push({ id: "systemd", label: "Systemd服务" });
+            datas.push({ key: "systemd", father: "systemd", value: "Systemd服务" });
             break;
           case "docker":
-            datas.push({ id: "docker", label: "Docker容器" });
+            datas.push({ key: "docker", father: "docker", value: "Docker容器" });
             break;
         }
       }
       resolve(datas)
     })
-  } else if (node.data.children === undefined || node.data.children === null) {
-    switch (node.data.id) {
+  } else if (node.level === 1) {
+    switch (node.data.key) {
       case "dirfiles":
-        loadDirfiles().catch(err=>{
+        loadDirfiles().then(resp => {
+          dirfileKeys.splice(0, dirfileKeys.length)
+          dirfileKeys.push(...resp.keys)
+          resolve(getLeveledFiles(node.data.father, node.level, resp.files))
+        }).catch(err=>{
           console.error(err)
           reject()
-        }).then(m=>{
-          const datas:Tree[] = [],
-                fmap = m as {[key:string]:File[]},
-                keys = Object.keys(fmap).sort();
-          for (const key of keys) {
-            let ftree:Tree = {id: key, label: key, children: []}
-            for (const child of fmap[key].sort(sortByName)) {
-              ftree.children?.push({id: child.hash, label: child.name, leaf: true, father:node.data.id})
-            }
-            datas.push(ftree)
-          }
-          resolve(datas)
         })
       break
       case "systemd":
@@ -157,7 +186,7 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
         }).then(v=>{
           const datas:Tree[] = []
           for (const data of v.sort()) {
-            datas.push({id: data, label: data, leaf: true, father:node.data.id})
+            datas.push({key: data, value: data, leaf: true, father:node.data.father})
           }
           resolve(datas)
         })
@@ -169,7 +198,7 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
         }).then(v=>{
           const datas:Tree[] = []
           for (const data of v.sort(sortByName)) {
-            datas.push({id: data.id, label: data.name, leaf: true, father:node.data.id})
+            datas.push({key: data.key, value: data.name, leaf: true, father:node.data.father})
           }
           resolve(datas)
         })
@@ -178,14 +207,14 @@ const loadNode = (node: Node, resolve: (data: Tree[]) => void, reject: () => voi
         resolve([])
     }
   } else {
-    resolve(node.data.children)
+    resolve(getLeveledFiles(node.data.father, node.level, node.data.children))
   }
 }
 
 const emit = defineEmits(['select', 'double-click'])
 
 const handleSelect = (data: Tree, node: Node) => {
-  if (node.isLeaf) emit('select', {type: data.father, id: data.id})
+  if (node.isLeaf) emit('select', {type: data.father, id: data.key})
 }
 
 const handleClick = (data: Tree, node: Node) => {
@@ -198,7 +227,7 @@ const handleClick = (data: Tree, node: Node) => {
     }, 300)
   } else {
     if (doubleClickTree === data) {
-      emit('double-click', {type: data.father, id: data.id})
+      emit('double-click', {type: data.father, id: data.key})
       clearTimeout(doubleClickTimer)
       doubleClickTree = null
       doubleClickTimer = null
@@ -223,8 +252,14 @@ const clean = () => {
     child.collapse()
   }
 }
+const openall = (thisNode:Node) => {
+  if (thisNode === undefined) thisNode = rootNode
+  for (const child of thisNode.childNodes) {
+    if (!child.isLeaf) child.expand(() => openall(child))
+  }
+}
 
 defineExpose({
-  clean
+  clean, openall
 })
 </script>

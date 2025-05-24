@@ -37,3 +37,13 @@ func EnsureKeys(q url.Values, keys ...string) error {
 	}
 	return nil
 }
+
+func RedirectPrefix(prefix string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			http.Redirect(w, r, fmt.Sprint(prefix, "/"), http.StatusFound)
+			return
+		}
+		http.NotFound(w, r)
+	}
+}

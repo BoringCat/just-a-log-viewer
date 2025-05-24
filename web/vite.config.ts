@@ -22,6 +22,7 @@ const libraryChunks:chunk[] = [
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   build: {
     rollupOptions: {
       output: {
