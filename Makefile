@@ -6,10 +6,24 @@ VERSION := $(shell git describe --tags 2>/dev/null || echo "unknown")
 endif
 
 ifdef CI_COMMIT_SHORT_SHA
-COMMIT := ${CI_COMMIT_SHORT_SHA}
+SHORT_COMMIT := ${CI_COMMIT_SHORT_SHA}
 else
 # 从Git获取当前提交ID，取前8位
-COMMIT := $(shell git rev-parse HEAD 2>/dev/null | head -c8)
+SHORT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null | head -c8)
+endif
+
+ifdef CI_COMMIT_SHA
+COMMIT := ${CI_COMMIT_SHA}
+else
+# 从Git获取当前提交ID，取前8位
+COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
+endif
+
+ifdef CI_COMMIT_BRANCH
+GIT_BRANCH := ${CI_COMMIT_BRANCH}
+else
+# 从Git获取当前提交ID，取前8位
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD")
 endif
 
 ifdef CI_PROJECT_NAME
@@ -21,12 +35,14 @@ endif
 
 # RFC3339Nano格式的编译时间
 MAKEDATE  := $(shell date '+%FT%T%:z')
+# Go版本号
+GO_VERSION  := $(shell go version | cut -d' ' -f3)
 # 定义输出目录（加上 "_" 避免 go 扫描）
 DISTDIR   ?= _dist
 # 定义最终输出路径
 BIN_FILE  := ${DISTDIR}/${FILENAME}
 # 编译命令
-BUILD_CMD := go build -trimpath -ldflags "-s -w -X main.version=${VERSION} -X main.buildDate=${MAKEDATE} -X main.commit=${COMMIT}"
+BUILD_CMD := go build -trimpath -ldflags "-s -w -X main.version=${VERSION} -X main.buildDate=${MAKEDATE} -X main.commit=${COMMIT} -X main.gitBranch=${GIT_BRANCH} -X main.goVersion=${GO_VERSION}"
 # 入口文件或文件夹
 MAIN      := ./cmd/main
 # 开启CGO

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -23,7 +24,10 @@ var (
 	prefix         string
 	prefixRedirect bool
 	cmdServer      *kingpin.CmdClause
+	printVersion   *kingpin.CmdClause
 	globTest       *kingpin.CmdClause
+
+	version, buildDate, commit, goVersion, gitBranch string
 )
 
 func parserArgs() string {
@@ -44,6 +48,8 @@ func parserArgs() string {
 	tools := app.Command("tools", "工具")
 	globTest = tools.Command("glob-test", "测试glob配置")
 	globTest.Flag("config", "配置文件路径").Short('c').Required().ExistingFileVar(&dirfiles.ConfigFilePath)
+
+	printVersion = app.Command("version", "打印版本号")
 
 	cmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 	server.GlobalBufSize = int(G_bufsize)
@@ -69,12 +75,21 @@ func serverMain() {
 	}
 }
 
+func printVersionMain() {
+	fmt.Printf("just-a-log-viewer, version %s (branch: %s, revision: %s)\n", version, gitBranch, commit)
+	fmt.Printf("  build date: %s\n", buildDate)
+	fmt.Printf("  go version: %s\n", goVersion)
+	fmt.Printf("  platform:   %s/%s\n", runtime.GOOS, runtime.GOARCH)
+}
+
 func main() {
 	switch parserArgs() {
 	case globTest.FullCommand():
 		globTestMain()
 	case cmdServer.FullCommand():
 		serverMain()
+	case printVersion.FullCommand():
+		printVersionMain()
 	default:
 		serverMain()
 	}
