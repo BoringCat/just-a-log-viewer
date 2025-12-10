@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/var/cache set -xe\
  && yum makecache fast\
  && yum install -y '@Development Tools' systemd-devel.x86_64 systemd-devel.i686 glibc-devel.x86_64 glibc-devel.i686 make 
 
-ARG GOVERSION
+ARG GOVERSION=1.24.2
 ARG GOARCH=amd64
 RUN set -xe\
  && curl -SL https://go.dev/dl/go${GOVERSION}.linux-${GOARCH}.tar.gz > /tmp/go.tar.gz\

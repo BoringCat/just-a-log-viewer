@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/boringcat/just-a-log-viewer/server"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
 
@@ -56,7 +56,11 @@ func (s *Server) HandleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client, err := s.getClient(r.Context())
-	containers, err := client.ContainerList(r.Context(), types.ContainerListOptions{All: AllContainer})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	containers, err := client.ContainerList(r.Context(), container.ListOptions{All: AllContainer})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -92,7 +96,11 @@ func (s *Server) HandleTail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client, err := s.getClient(r.Context())
-	opts := types.ContainerLogsOptions{
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	opts := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	}
@@ -137,7 +145,11 @@ func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client, err := s.getClient(r.Context())
-	opts := types.ContainerLogsOptions{
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	opts := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -166,7 +178,7 @@ func (s *Server) HandleWatch(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprintf(w, "data: ")
 		w.Write(buf[8:])
-		fmt.Fprintln(w, "\n")
+		fmt.Fprint(w, "\n\n")
 		flusher.Flush()
 	}
 }
