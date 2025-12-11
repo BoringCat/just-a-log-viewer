@@ -7,6 +7,8 @@ require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/docker/docker v28.5.2+incompatible
+	github.com/google/brotli/go/cbrotli v1.1.0
+	github.com/klauspost/compress v1.18.2
 	github.com/nxadm/tail v1.4.11
 	github.com/pkg/errors v0.9.1
 	gopkg.in/yaml.v3 v3.0.1

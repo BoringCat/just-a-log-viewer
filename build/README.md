@@ -16,5 +16,5 @@ docker run --rm \
     -v $PWD/build/_go:/go \
     -w /app --user `id -u`:`id -g` \
     -it just-a-log-viewer:builder \
-    bash -c 'make deps && make dist.linux.amd64 dist.linux.386'
+    bash -c 'make deps && make dist.linux.amd64'
 ```

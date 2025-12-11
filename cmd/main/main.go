@@ -26,6 +26,7 @@ var (
 	cmdServer      *kingpin.CmdClause
 	printVersion   *kingpin.CmdClause
 	globTest       *kingpin.CmdClause
+	compOpt        = server.CompressOpts{}
 
 	version, buildDate, commit, goVersion, gitBranch string
 )
@@ -44,6 +45,11 @@ func parserArgs() string {
 	cmdServer.Flag("buffer", "文件扫描缓冲区大小").Default("16KiB").BytesVar(&G_bufsize)
 	cmdServer.Flag("prefix", "HTTP服务前缀").StringVar(&prefix)
 	cmdServer.Flag("prefix-redirect", "启用前缀跳转").BoolVar(&prefixRedirect)
+	cmdServer.Flag("compress-order", "HTTP压缩顺序").Default(server.SupportedCompress...).EnumsVar(&compOpt.Order, server.SupportedCompress...)
+	cmdServer.Flag("compress-gzip-level", "HTTP Gzip压缩等级").Default("-1").IntVar(&compOpt.GzipLevel)
+	cmdServer.Flag("compress-deflate-level", "HTTP Deflate压缩等级").Default("-1").IntVar(&compOpt.DeflateLevel)
+	cmdServer.Flag("compress-br-level", "HTTP Brotil压缩等级").Default("6").IntVar(&compOpt.BrotilLevel)
+	cmdServer.Flag("compress-zstd-level", "HTTP Zstd压缩等级").Default("1").IntVar(&compOpt.ZstdLevel)
 
 	tools := app.Command("tools", "工具")
 	globTest = tools.Command("glob-test", "测试glob配置")
@@ -52,7 +58,10 @@ func parserArgs() string {
 	printVersion = app.Command("version", "打印版本号")
 
 	cmd := kingpin.MustParse(app.Parse(os.Args[1:]))
-	server.GlobalBufSize = int(G_bufsize)
+	if cmd == cmdServer.FullCommand() {
+		server.GlobalBufSize = int(G_bufsize)
+		compOpt.Verify()
+	}
 
 	if debug != nil && *debug {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
@@ -70,7 +79,7 @@ func serverMain() {
 		mux.HandleFunc("/", server.RedirectPrefix(prefix))
 		fmt.Println(prefixRedirect)
 	}
-	if err := http.ListenAndServe(listen.String(), mux); err != nil {
+	if err := http.ListenAndServe(listen.String(), server.NewCompressHandler(mux, &compOpt)); err != nil {
 		panic(err)
 	}
 }
