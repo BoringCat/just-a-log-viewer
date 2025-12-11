@@ -1,8 +1,8 @@
 ifdef CI_COMMIT_TAG
-VERSION := ${CI_COMMIT_TAG}
+VERSION ?= ${CI_COMMIT_TAG}
 else
 # 从Git获取最新tag
-VERSION := $(shell git describe --tags 2>/dev/null || echo "unknown")
+VERSION ?= $(shell git describe --tags 2>/dev/null || echo "unknown")
 endif
 
 ifdef CI_COMMIT_SHORT_SHA
@@ -27,10 +27,10 @@ GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "HEAD"
 endif
 
 ifdef CI_PROJECT_NAME
-FILENAME := ${CI_PROJECT_NAME}
+FILENAME ?= ${CI_PROJECT_NAME}
 else
 # 从go.mod里面提取项目名，作为编译文件名
-FILENAME := $(shell head -1 go.mod | awk -F '[/ ]' '{print $$NF}' | cut -d. -f1)
+FILENAME ?= $(shell head -1 go.mod | awk -F '[/ ]' '{print $$NF}' | cut -d. -f1)
 endif
 
 # RFC3339Nano格式的编译时间
@@ -46,41 +46,28 @@ BUILD_CMD := go build -trimpath -ldflags "-s -w -X main.version=${VERSION} -X ma
 # 入口文件或文件夹
 MAIN      := ./cmd/main
 # 开启CGO
-export CGO_ENABLED := 1
+export CGO_ENABLED  := 1
+export CGO_LDFLAGS  := -Wl,-rpath=$$ORIGIN/lib
 export NODE_VERSION := 20
 
 # 默认命令：根据编译当前系统当前架构的版本，不添加 系统-架构 后缀
 .PHONY: dist
-dist:
+dist: libs
 	$(BUILD_CMD) -o $(BIN_FILE) $(MAIN)
 
-# 获取支持的所有系统和架构，排除掉不想要的，作为编译目标
-DISTLIST:=$(shell go tool dist list | grep -P '^(darwin|linux|windows)/' | grep -P '386|64|390' | sed 's~/~.~g')
-# 从 系统.架构 列表中提取支持的系统（用于创建make入口）
-OSLIST:=$(shell for t in ${DISTLIST}; do echo $${t}; done | cut -d. -f1 | sort | uniq)
+.PHONY: libs
+libs:
+	mkdir -p ${DISTDIR}/lib
+	find /lib /lib64 /usr/lib /usr/lib64 -name 'libbrotli*.so.1' -print0 \
+	| xargs -0 -I {} ln -svf {} ${DISTDIR}/lib/
 
-# 定义make all操作为：make 所有系统
-.PHONY: all
-all: $(OSLIST)
 
-# 定义 make 系统 操作为 dist.系统.所有架构
-define OS_template
-.PHONY: ${1}
-${1}: $(addprefix dist., $(shell for t in ${DISTLIST}; do echo $${t}; done | grep ${1}))
-endef
-# 渲染所有 make dist.系统.架构
-$(foreach os,$(OSLIST),$(eval $(call OS_template,$(os))))
-
-# 定义 make dist.*，从输入中获取 GOOS=系统 和 GOARCH=架构。
-# 且当 GOOS == windows 时，定义后缀为 .exe
-.PHONY: dist.%
-dist.%:
-	$(eval GOOS := $(word 1,$(subst ., ,$*)))
-	$(eval GOARCH := $(word 2,$(subst ., ,$*)))
-	@bash -c '[ "$(GOOS)" = "windows" ] && EXT=.exe; export GOOS=$(GOOS) GOARCH=$(GOARCH); \
-	[ "$(GOOS)" != "linux" ] || [ "$(GOARCH)" != "amd64" -a "$(GOARCH)" != "386" ] && export CGO_ENABLED=0; \
-	set -x; \
-	$(BUILD_CMD) -o $(BIN_FILE)-$(GOOS)-$(GOARCH)$${EXT} $(MAIN)'
+.PHONY: package
+package: dist
+	tar -zch --remove-files --strip-components=1 \
+	-C ${DISTDIR} \
+	-f $(BIN_FILE)-${VERSION}.tar.gz \
+	${FILENAME} lib
 
 # 定义 make dep.* 为执行 go mod 的操作
 .PHONY: deps.%

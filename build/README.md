@@ -16,9 +16,5 @@ docker run --rm \
     -v $PWD/build/_go:/go \
     -w /app --user `id -u`:`id -g` \
     -it just-a-log-viewer:builder \
-    bash -xeuo pipefail -c 'make deps.tidy && make dist.linux.amd64 \
-    && ln -sfv /lib64/libbrotli*.so.1 _dist/ \
-    && ln -sfv _dist/just-a-log-viewer-linux-amd64 _dist/log-viewer \
-    && tar -zch --remove-files -f _dist/just-a-log-viewer-linux-amd64.tar.gz _dist/log-viewer _dist/libbrotli*
-    '
+    bash -xeuo pipefail -c 'make dep.tidy && make package'
 ```
