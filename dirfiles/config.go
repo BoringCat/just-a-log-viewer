@@ -19,9 +19,32 @@ var (
 	ErrUnsupportFormat = errors.New("unsupported format")
 )
 
+type RegexpLabel struct {
+	Regex *regexp.Regexp `json:"regex" yaml:"regex"`
+	Repl  string         `json:"repl" yaml:"repl"`
+}
+
+func (l *RegexpLabel) GetString(val string) string {
+	var repl string
+	if len(l.Repl) == 0 {
+		repl = "$1"
+	} else {
+		repl = l.Repl
+	}
+	indexes := l.Regex.FindStringSubmatchIndex(val)
+	if indexes == nil {
+		return ""
+	}
+	res := l.Regex.ExpandString([]byte{}, repl, val, indexes)
+	if len(res) == 0 {
+		return ""
+	}
+	return string(res)
+}
+
 type ConfigFile struct {
-	Paths  []string                  `json:"paths" yaml:"paths"`
-	Labels map[string]*regexp.Regexp `json:"labels" yaml:"labels"`
+	Paths  []string                `json:"paths" yaml:"paths"`
+	Labels map[string]*RegexpLabel `json:"labels" yaml:"labels"`
 }
 
 type Config struct {
@@ -60,16 +83,8 @@ func ReadConfig(filename string) (confs *Config, err error) {
 func (c *ConfigFile) GetKeyMap(fp string) (name string, labels map[string]string) {
 	labels = make(map[string]string)
 	name = filepath.Base(fp)
-	for key, re := range c.Labels {
-		var val string
-		vals := re.FindStringSubmatch(fp)
-		if len(vals) == 0 {
-			continue
-		} else if len(vals) == 1 {
-			val = vals[0]
-		} else {
-			val = vals[1]
-		}
+	for key, conf := range c.Labels {
+		val := conf.GetString(fp)
 		if key == NameKey {
 			name = val
 		} else {
