@@ -42,6 +42,38 @@ func (l *RegexpLabel) GetString(val string) string {
 	return string(res)
 }
 
+func (l *RegexpLabel) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		l.Regex, err = regexp.Compile(str)
+		l.Repl = "$1"
+		return err
+	}
+	var m map[string]string
+	if err := json.Unmarshal(data, &m); err == nil {
+		l.Regex, err = regexp.Compile(m["regex"])
+		l.Repl = m["repl"]
+		return err
+	}
+	return errors.Wrap(ErrUnsupportFormat, "regexp label")
+}
+
+func (l *RegexpLabel) UnmarshalYAML(value *yaml.Node) error {
+	var str string
+	if err := value.Decode(&str); err == nil {
+		l.Regex, err = regexp.Compile(str)
+		l.Repl = "$1"
+		return err
+	}
+	var m map[string]string
+	if err := value.Decode(&m); err == nil {
+		l.Regex, err = regexp.Compile(m["regex"])
+		l.Repl = m["repl"]
+		return err
+	}
+	return errors.Wrap(ErrUnsupportFormat, "regexp label")
+}
+
 type ConfigFile struct {
 	Paths  []string                `json:"paths" yaml:"paths"`
 	Labels map[string]*RegexpLabel `json:"labels" yaml:"labels"`
