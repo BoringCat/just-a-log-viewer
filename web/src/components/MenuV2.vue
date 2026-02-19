@@ -45,19 +45,11 @@
 import { ref, watch } from 'vue'
 import type { TreeInstance } from 'element-plus'
 import type Node from 'element-plus/es/components/tree/src/model/node'
-import {
-  Document,
-  Setting,
-} from '@element-plus/icons-vue'
-import { compileScript } from 'vue/compiler-sfc'
 
-interface TreeData {
-  [key: string]: any
-}
 const props = {
-  value: 'key',
-  label: 'value',
-  class: 'line',
+  value:  'key',
+  label:  'value',
+  class:  'line',
   isLeaf: 'leaf'
 }
 interface Tree {
@@ -68,12 +60,12 @@ interface Tree {
   leaf?:     boolean
 }
 interface File {
-  hash: string,
-  name: string,
+  hash:   string,
+  name:   string,
   labels: {[key:string]:string}
 }
 interface ListDirFileResp {
-  keys: string[],
+  keys:  string[],
   files: File[],
 }
 

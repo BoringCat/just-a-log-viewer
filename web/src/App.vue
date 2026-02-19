@@ -2,11 +2,10 @@
 import { ref, watch, type Ref } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import MenuV2 from './components/MenuV2.vue'
-import { Loading, Sunny, Moon, DataAnalysis, Refresh, Document } from '@element-plus/icons-vue'
-import { useDark, useToggle } from '@vueuse/core'
+import { Loading, Sunny, Moon, DataAnalysis, Refresh } from '@element-plus/icons-vue'
+import { useDark } from '@vueuse/core'
 
 const isDark = useDark()
-// const toggleDark = useToggle(isDark)
 
 interface selected {
   type: string
