@@ -2,7 +2,7 @@
 import { ref, watch, type Ref } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import MenuV2 from './components/MenuV2.vue'
-import { Loading, Sunny, Moon, DataAnalysis, Refresh } from '@element-plus/icons-vue'
+import { Loading, Sunny, Moon, DataAnalysis, Refresh, DArrowRight, DArrowLeft, FolderOpened } from '@element-plus/icons-vue'
 import { useDark } from '@vueuse/core'
 
 const isDark = useDark()
@@ -22,15 +22,16 @@ interface journalLog {
   priority:  string,
 }
 
-const menu = ref()
-const logs = ref<string[]>([])
-const tail = ref(100)
-const maxline = ref(1000)
-const until = ref<Date>()
-const order = ref('DESC')
-const warp = ref(false)
-const logClass = ref('log-nowarp')
-const listenEvent = ref<EventSource>()
+const menu               = ref()
+const showMenu           = ref<boolean>(true)
+const logs               = ref<string[]>([])
+const tail               = ref(100)
+const maxline            = ref(1000)
+const until              = ref<Date>()
+const order              = ref('DESC')
+const warp               = ref(false)
+const logClass           = ref('log-nowarp')
+const listenEvent        = ref<EventSource>()
 const logSelect:selected = {type:'',id:''}
 
 const trySetValue = (val:Ref, key:string) => {
@@ -45,13 +46,11 @@ const trySetValue = (val:Ref, key:string) => {
 }
 
 trySetValue(isDark,   'isDark')
-trySetValue(logs,     'logs')
 trySetValue(tail,     'tail')
 trySetValue(maxline,  'maxline')
 trySetValue(order,    'order')
 trySetValue(warp,     'warp')
 trySetValue(logClass, 'logClass')
-
 
 const RFC3339Mill = (timestamp: number):string => {
   let ts = new Date(timestamp)
@@ -260,10 +259,18 @@ const onListen = () => {
         <div style="width: 272px; min-width: 272px" class="flex">
           <el-icon :size="26"><DataAnalysis /></el-icon>
           <p class="title">查看日志</p>
-          <el-tooltip content="小心卡顿" placement="bottom">
-            <el-button type="primary" text size="small" class="push" @click="menu.openall()">展开所有</el-button>
+          <el-tooltip content="展开所有" placement="bottom">
+            <el-button type="info" circle class="push" :icon="FolderOpened" @click="menu.openall()"/>
           </el-tooltip>
-          <el-button type="primary" :icon="Refresh" @click="menu.clean()">刷新</el-button>
+          <el-tooltip content="刷新" placement="bottom">
+            <el-button type="primary" circle :icon="Refresh" @click="menu.clean()"/>
+          </el-tooltip>
+          <el-tooltip content="收起菜单" placement="bottom" v-if="showMenu">
+            <el-button type="warning" circle :icon="DArrowLeft" @click="showMenu = false"/>
+          </el-tooltip>
+          <el-tooltip content="展开菜单" placement="bottom" v-else>
+            <el-button type="success" circle :icon="DArrowRight" @click="showMenu = true"/>
+          </el-tooltip>
         </div>
         <el-divider direction="vertical" />
         <el-scrollbar>
@@ -303,12 +310,12 @@ const onListen = () => {
         <el-switch v-model="isDark" size="large" :active-action-icon="Moon" :inactive-action-icon="Sunny" />
       </el-header>
       <el-container>
-        <el-aside class="aside-layout" width="300px">
+        <el-aside class="aside-layout" width="300px" v-if="showMenu">
           <el-scrollbar>
             <MenuV2 @select="handleSelect" @double-click="handleDoubleClick" ref="menu"/>
           </el-scrollbar>
         </el-aside>
-        <el-main class="main-layout">
+        <el-main :class="showMenu ? 'main-layout' : 'main-layout-full'">
           <el-scrollbar :class="logClass">
             <p v-for="log, idx in logs" v-bind:key="idx" :class="idx%2==1?'line-even line':'line'">
               <code :class="idx%2==1?'line-even line':'line'">{{ log }}</code>
@@ -371,6 +378,14 @@ code.line {
   margin: 0 0 0 12px;
   max-width:  calc(100vw - 324px);
   width:      calc(100vw - 324px);
+  max-height: calc(100vh - 78px);
+  height:     calc(100vh - 78px);
+}
+.main-layout-full {
+  padding: 0;
+  margin: 0 0 0 12px;
+  max-width:  calc(100vw - 24px);
+  width:      calc(100vw - 24px);
   max-height: calc(100vh - 78px);
   height:     calc(100vh - 78px);
 }
