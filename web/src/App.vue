@@ -310,7 +310,7 @@ const onListen = () => {
         <el-switch v-model="isDark" size="large" :active-action-icon="Moon" :inactive-action-icon="Sunny" />
       </el-header>
       <el-container>
-        <el-aside class="aside-layout" width="300px" v-if="showMenu">
+        <el-aside :class="showMenu ? 'aside-layout' : 'aside-layout aside-layout-hide'" width="300px">
           <el-scrollbar>
             <MenuV2 @select="handleSelect" @double-click="handleDoubleClick" ref="menu"/>
           </el-scrollbar>
@@ -364,6 +364,9 @@ code.line {
 .aside-layout {
   max-height: calc(100vh - 78px);
   height:     calc(100vh - 78px);
+}
+.aside-layout-hide {
+  display: none;
 }
 .flex {
   display: flex;

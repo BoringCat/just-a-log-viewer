@@ -91,7 +91,7 @@ web: web.install web.build
 # 定义 make clean 为清理目录和编译缓存
 clean:
 	-rm -rf -- ${DISTDIR}
-	go tool dist clean
+	-go tool dist clean
 # 	如果你想清理掉所有缓存
 # 	go clean -cache
 
